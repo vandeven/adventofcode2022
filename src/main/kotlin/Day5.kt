@@ -34,4 +34,16 @@ fun main() {
     }.map { it.value!!.firstOrNull() ?: "" }.joinToString(separator = "")
 
     println(result)
+
+    val result2 = commands.fold(grid){ g, e ->
+        val from = g[e.from]!!.take(e.amount)
+        val to = g[e.to]!!
+        val newTo = from.reversed().fold(to){ acc, f ->
+            listOf(f).plus(acc.asSequence())
+        }
+        val newFrom = e.from to g[e.from]!!.drop(e.amount)
+        g.plus(e.to to newTo).plus(newFrom)
+    }.map { it.value!!.firstOrNull() ?: "" }.joinToString(separator = "")
+    println(result2)
+
 }
