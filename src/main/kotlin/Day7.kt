@@ -14,8 +14,23 @@ data class Directory(
 
 
 fun main() {
+    data class Walker(val currentDir: Directory, val allDir: Map<String, Directory>)
+
+    fun calculateSize(directory: Directory, all: Map<String, Directory>): Pair<Int, Map<String, Directory>> {
+        val dirSize = directory.directories.fold(0 to all) { acc, e ->
+            val result = calculateSize(all[e]!!, acc.second)
+            acc.copy(first = acc.first + result.first, second = result.second)
+        }
+        val filesSize = directory.files.sumOf { it.size }
+        val currentDirSize = dirSize.first + filesSize
+        return currentDirSize to dirSize.second.plus(directory.name to directory.copy(size = currentDirSize))
+    }
+
+    val baseTreeDir = setOf(Directory("/", "", setOf(), setOf())).associateBy { it.name }
+
     val all = "/day7.txt".readFile()
-    val commands = all.mapIndexed { i, e -> i to e }
+
+    val dirTree = all.mapIndexed { i, e -> i to e }
         .filter { it.second.startsWith("$") }
         .map {
             if (it.second.startsWith("$ cd")) {
@@ -32,23 +47,8 @@ fun main() {
                     }
                 )
             }
-        }
-
-    data class Walker(val currentDir: Directory, val allDir: Map<String, Directory>)
-
-    fun calculateSize(directory: Directory, all: Map<String, Directory>): Pair<Int, Map<String, Directory>> {
-        val dirSize = directory.directories.fold(0 to all) { acc, e ->
-            val result = calculateSize(all[e]!!, acc.second)
-            acc.copy(first = acc.first + result.first, second = result.second)
-        }
-        val filesSize = directory.files.sumOf { it.size }
-        val currentDirSize = dirSize.first + filesSize
-        return currentDirSize to dirSize.second.plus(directory.name to directory.copy(size = currentDirSize))
-    }
-
-    val allDirs = setOf(Directory("/", "", setOf(), setOf())).associateBy { it.name }
-    val sizes = commands.drop(1)
-        .fold(Walker(allDirs["/"]!!, allDirs)) { walker, e ->
+        }.drop(1)
+        .fold(Walker(baseTreeDir["/"]!!, baseTreeDir)) { walker, e ->
             when (e) {
                 is CD -> when (e.name) {
                     ".." -> walker.copy(currentDir = walker.allDir[walker.currentDir.parent]!!)
@@ -79,8 +79,8 @@ fun main() {
             }
         }.let { calculateSize(it.allDir["/"]!!, it.allDir).second }
 
-    println(sizes.values.filter { it.size < 100000 }.sumOf { it.size })
-    val neededSpace = 30000000 - (70000000 - sizes["/"]!!.size)
-    println(sizes.values.filter { it.size >= neededSpace }.minBy { it.size }.size)
+    println(dirTree.values.filter { it.size < 100000 }.sumOf { it.size })
+    val neededSpace = 30000000 - (70000000 - dirTree["/"]!!.size)
+    println(dirTree.values.filter { it.size >= neededSpace }.minBy { it.size }.size)
 }
 
