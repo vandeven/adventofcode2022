@@ -33,11 +33,21 @@ fun main() {
                 )
             }
         }
-    val allDirs = setOf(Directory("/", "", setOf(), setOf())).associateBy { it.name }
 
     data class Walker(val currentDir: Directory, val allDir: Map<String, Directory>)
 
-    val newDirs = commands.drop(1)
+    fun calculateSize(directory: Directory, all : Map<String, Directory>): Pair<Int, Map<String, Directory>> {
+        val dirSize = directory.directories.fold(0 to all){ acc, e ->
+            val result = calculateSize(all[e]!!, acc.second)
+            acc.copy(first = acc.first + result.first, second = result.second)
+        }
+        val filesSize = directory.files.sumOf { it.size }
+        val currentDirSize = dirSize.first + filesSize
+        return currentDirSize to dirSize.second.plus(directory.name to directory.copy(size = currentDirSize))
+    }
+
+    val allDirs = setOf(Directory("/", "", setOf(), setOf())).associateBy { it.name }
+    val sizes = commands.drop(1)
         .fold(Walker(allDirs["/"]!!, allDirs)) { walker, e ->
             when (e) {
                 is CD -> when (e.name) {
@@ -46,7 +56,6 @@ fun main() {
                         walker.copy(currentDir = walker.allDir["${walker.currentDir.name}/${e.name}"]!!)
                     }
                 }
-
                 is LS -> {
                     val directories =
                         e.values.filterIsInstance<Directory>().map { "${walker.currentDir.name}/${it.name}" }.toSet()
@@ -74,21 +83,10 @@ fun main() {
                     newWalker
                 }
             }
-        }.allDir.toMutableMap()
+        }.let { calculateSize(it.allDir["/"]!!, it.allDir).second }
 
-
-    fun calculateSize(directory: Directory): Int {
-        val dirSize = directory.directories.map { newDirs[it]!! }.sumOf { calculateSize(it) }
-        val filesSize = directory.files.map { it.size }.sum()
-        newDirs[directory.name] = directory.copy(size = dirSize + filesSize)
-        return dirSize + filesSize
-    }
-
-    calculateSize(newDirs["/"]!!)
-
-    println(newDirs.values.filter { it.size < 100000 }.sumOf { it.size })
-
-    val neededSpace = 30000000 - (70000000 - newDirs["/"]!!.size)
-    println(newDirs.values.filter { it.size >= neededSpace }.minByOrNull { it.size }!!.size)
+    println(sizes.values.filter { it.size < 100000 }.sumOf { it.size })
+    val neededSpace = 30000000 - (70000000 - sizes["/"]!!.size)
+    println(sizes.values.filter { it.size >= neededSpace }.minByOrNull { it.size }!!.size)
 }
 
