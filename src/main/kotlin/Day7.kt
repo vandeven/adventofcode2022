@@ -36,8 +36,8 @@ fun main() {
 
     data class Walker(val currentDir: Directory, val allDir: Map<String, Directory>)
 
-    fun calculateSize(directory: Directory, all : Map<String, Directory>): Pair<Int, Map<String, Directory>> {
-        val dirSize = directory.directories.fold(0 to all){ acc, e ->
+    fun calculateSize(directory: Directory, all: Map<String, Directory>): Pair<Int, Map<String, Directory>> {
+        val dirSize = directory.directories.fold(0 to all) { acc, e ->
             val result = calculateSize(all[e]!!, acc.second)
             acc.copy(first = acc.first + result.first, second = result.second)
         }
@@ -56,37 +56,31 @@ fun main() {
                         walker.copy(currentDir = walker.allDir["${walker.currentDir.name}/${e.name}"]!!)
                     }
                 }
+
                 is LS -> {
                     val directories =
                         e.values.filterIsInstance<Directory>().map { "${walker.currentDir.name}/${it.name}" }.toSet()
                     val files = e.values.filterIsInstance<File>().toSet()
-                    var newWalker = walker.copy(
+                    val newWalker = walker.copy(
                         allDir = walker.allDir.plus(
                             walker.currentDir.name to walker.currentDir.copy(
-                                files = files,
-                                directories = directories
+                                files = files, directories = directories
                             )
                         )
                     )
-                    directories.forEach {
-                        newWalker = newWalker.copy(
-                            allDir = newWalker.allDir.plus(
-                                it to Directory(
-                                    it,
-                                    walker.currentDir.name,
-                                    setOf(),
-                                    setOf()
-                                )
+                    directories.fold(newWalker) { acc, e ->
+                        acc.copy(
+                            allDir = acc.allDir.plus(
+                                e to Directory(e, walker.currentDir.name, setOf(), setOf())
                             )
                         )
                     }
-                    newWalker
                 }
             }
         }.let { calculateSize(it.allDir["/"]!!, it.allDir).second }
 
     println(sizes.values.filter { it.size < 100000 }.sumOf { it.size })
     val neededSpace = 30000000 - (70000000 - sizes["/"]!!.size)
-    println(sizes.values.filter { it.size >= neededSpace }.minByOrNull { it.size }!!.size)
+    println(sizes.values.filter { it.size >= neededSpace }.minBy { it.size }.size)
 }
 
